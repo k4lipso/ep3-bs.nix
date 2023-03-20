@@ -167,7 +167,7 @@ in
 
         name = mkOption {
           type = types.str;
-          default = "ep3bs";
+          default = "ep3bsdb";
           description = lib.mdDoc "Database name.";
         };
 
@@ -229,7 +229,6 @@ in
       "d '${cfg.stateDir}/config/autoload' 777 ${cfg.user} ep3-bs - -"
       "d '${cfg.stateDir}/vendor' 777 ${cfg.user} ep3-bs - -"
       "d '${cfg.stateDir}/vendor/symfony' 777 ${cfg.user} ep3-bs - -"
-      #"z '${cfg.stateDir}' 777 ${cfg.user} ep3-bs - -"
       "Z '${cfg.stateDir}' 777 ${cfg.user} ep3-bs - -"
     ];
 
@@ -243,14 +242,16 @@ in
         "rewrite"
       ];
       virtualHosts.localhost = {
-        documentRoot = mkDefault "${cfg.stateDir}";
+        documentRoot = mkDefault "${cfg.stateDir}/public/";
         extraConfig = ''
-          <Directory ${cfg.stateDir}/>
+          <Directory ${cfg.stateDir}/public/>
           DirectoryIndex index.php index.htm index.html
           Allow from *
           Options +FollowSymlinks
           AllowOverride All
           Require all granted
+          php_admin_flag display_errors on
+          php_admin_value error_reporting 22517
           </Directory>
         '';
       };
@@ -260,18 +261,20 @@ in
       enable = mkDefault true;
       package = mkDefault pkgs.mariadb;
 
-      initialScript = let
-        mysqlInitScript = pkgs.writeText "mysqlInitScript" ''
-          CREATE USER '${cfg.database.user}'@'localhost' IDENTIFIED BY '${cfg.database.password}';
-        '';
-      in "${mysqlInitScript}";
+      #GRANT ALL PRIVILEGES ON DATABASE ${cfg.database.name} TO '${cfg.database.user}'@'localhost';
+      initialScript = pkgs.writeText "mysqlInitScript" ''
+        CREATE USER '${cfg.database.user}'@localhost IDENTIFIED BY '${cfg.database.password}';
+        CREATE DATABASE ${cfg.database.name};
+        GRANT ALL PRIVILEGES ON *.* TO '${cfg.database.user}'@localhost IDENTIFIED BY '${cfg.database.password}';
+        FLUSH PRIVILEGES;
+      '';
 
-      ensureDatabases = [ cfg.database.name ];
-      ensureUsers = [
-        { name = cfg.database.user;
-          ensurePermissions = { "${cfg.database.name}.*" = "ALL PRIVILEGES"; };
-        }
-      ];
+      #ensureDatabases = [ cfg.database.name ];
+      #ensureUsers = [
+      #  { name = cfg.database.user;
+      #    ensurePermissions = { "${cfg.database.name}.*" = "ALL PRIVILEGES"; };
+      #  }
+      #];
     };
 
     systemd.services.ep3-bs = {

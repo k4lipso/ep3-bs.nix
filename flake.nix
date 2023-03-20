@@ -34,6 +34,7 @@
         ./ep3-bs.nix
         {
           services.ep3-bs.enable = true;
+          services.ep3-bs.database.user = "testuser3";
           services.ep3-bs.database.password = "testPassword1234";
           users.users.test = {
             isNormalUser = true;
