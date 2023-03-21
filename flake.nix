@@ -2,7 +2,15 @@
   description = "A very basic flake";
 
   outputs = { self, nixpkgs }: 
+  let
+    pkgs = nixpkgs.legacyPackages.x86_64-linux;
+  in
   {
+    devShell.x86_64-linux = pkgs.mkShell {
+        shellHook = ''
+          export QEMU_NET_OPTS="hostfwd=tcp::2221-:22,hostfwd=tcp::8080-:80"
+        '';
+      };
 
     packages.x86_64-linux.ep3-bs =
       with import nixpkgs { system = "x86_64-linux"; };
@@ -34,6 +42,7 @@
         ./ep3-bs.nix
         {
           services.ep3-bs.enable = true;
+          services.ep3-bs.mail.address = "test@test.de";
           services.ep3-bs.database.user = "testuser3";
           services.ep3-bs.database.password = "testPassword1234";
           users.users.test = {
@@ -41,10 +50,12 @@
             extraGroups = [ "wheel" ];
             initialPassword = "test";
           };
+
+          virtualisation.vmVariant.virtualisation.graphics = true;
         }
       ];
     };
-    #packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
 
+    packages.x86_64-linux.testVM = self.nixosConfigurations.test.config.system.build.vm;
   };
 }
