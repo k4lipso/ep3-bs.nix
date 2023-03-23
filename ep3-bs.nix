@@ -118,8 +118,31 @@ in
 
       group = mkOption {
         type = types.str;
-        default = "ep3-bs";
+        default = "${config.services.httpd.group}";
         description = lib.mdDoc "Group for ep3-bs.";
+      };
+
+      webserver = {
+        enable = mkOption {
+          type = types.bool;
+          default = true;
+          description = ''
+            Enable Apache HTTP Server running virtualHost on given Port
+          '';
+        };
+
+        domain = mkOption {
+          type = types.str;
+          default = "localhost";
+          description = ''
+            Domain that webserver should listen for, like www.example.com.
+          '';
+        };
+
+        port = mkOption {
+          type = types.port;
+          default = 80;
+        };
       };
 
       extraConfig = mkOption {
@@ -274,14 +297,13 @@ in
 
     services.httpd = {
       enable = mkDefault true;
-      user = mkDefault "${cfg.user}";
       enablePHP = true;
       phpPackage = mkDefault pkgs.php81;
       adminAddr = mkDefault "alice@example.org";
       extraModules = [
         "rewrite"
       ];
-      virtualHosts.localhost = {
+      virtualHosts."${cfg.webserver.domain}" = {
         documentRoot = mkDefault "${cfg.stateDir}/public/";
         extraConfig = ''
           <Directory ${cfg.stateDir}/public/>
@@ -297,7 +319,7 @@ in
       };
     };
 
-    services.mysql = {
+    services.mysql = mkIf (cfg.database.createDatabase == true) {
       enable = mkDefault true;
       package = mkDefault pkgs.mariadb;
 
@@ -308,17 +330,17 @@ in
         FLUSH PRIVILEGES;
       '';
 
-      #ensureDatabases = [ cfg.database.name ];
-      #ensureUsers = [
-      #  { name = cfg.database.user;
-      #    ensurePermissions = { "${cfg.database.name}.*" = "ALL PRIVILEGES"; };
-      #  }
-      #];
+      ensureDatabases = [ cfg.database.name ];
+      ensureUsers = [
+        { name = cfg.database.user;
+          ensurePermissions = { "${cfg.database.name}.*" = "ALL PRIVILEGES"; };
+        }
+      ];
     };
 
     systemd.services.ep3-bs-init = {
       description = "Initialize ep3-bs Data Directory";
-      after = [ "network.target" ];
+      after = [ "network.target" "httpd.target" ];
       wantedBy = [ "multi-user.target" ];
 
       preStart = ''
@@ -350,12 +372,10 @@ in
       ep3-bs = {
         description = "ep3-bs Service User";
         home = cfg.stateDir;
-        group = "ep3-bs";
+        group = "${cfg.group}";
         isNormalUser = true;
       };
     };
-
-    users.groups.ep3-bs = {};
 
   };
 }
