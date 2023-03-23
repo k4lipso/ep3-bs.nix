@@ -1,22 +1,23 @@
 {
   description = "A very basic flake";
 
-  outputs = { self, nixpkgs }: 
+  inputs.utils.url = "github:numtide/flake-utils";
+
+  outputs = { self, nixpkgs, utils }: 
+
+  utils.lib.eachSystem (utils.lib.defaultSystems) ( system:
   let
-    pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    pkgs = nixpkgs.legacyPackages."${system}";
   in
   {
-    devShell.x86_64-linux = pkgs.mkShell {
-        shellHook = ''
-          export QEMU_NET_OPTS="hostfwd=tcp::2221-:22,hostfwd=tcp::8080-:80"
-        '';
-      };
+    devShells.default = pkgs.mkShell {
+      shellHook = ''
+        export QEMU_NET_OPTS="hostfwd=tcp::2221-:22,hostfwd=tcp::8080-:80"
+      '';
+    };
 
-    packages.x86_64-linux.ep3-bs =
-      with import nixpkgs { system = "x86_64-linux"; };
-      stdenv.mkDerivation {
+    packages.ep3-bs = with pkgs; stdenv.mkDerivation {
         name = "ep3-bs";
-      
         src = fetchFromGitHub {
           owner = "tkrebs";
           repo = "ep3-bs";
@@ -34,6 +35,8 @@
       };
 
     nixosModules.ep3-bs = import ./ep3-bs.nix;
+
+  }) // {
 
     nixosConfigurations.test = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
