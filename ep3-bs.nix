@@ -91,6 +91,8 @@ let
     mkdir ${cfg.stateDir}/vendor/symfony
     cd ${cfg.stateDir}
     ${pkgs.php81Packages.composer}/bin/composer install --ignore-platform-reqs
+    cp ${cfg.favicon} ${cfg.stateDir}/public/imgs-client/icons/fav.ico
+    cp ${cfg.logo} ${cfg.stateDir}/public/imgs-client/layout/logo.png
     cp ${cfg.stateDir}/config/init.php.dist ${cfg.stateDir}/config/init.php
     cp -f ${configFile} ${cfg.stateDir}/config/autoload/local.php
     rm ${cfg.stateDir}/config/autoload/local.php.dist
@@ -120,6 +122,17 @@ in
         type = types.str;
         default = "${config.services.httpd.group}";
         description = lib.mdDoc "Group for ep3-bs.";
+      };
+
+      favicon = mkOption {
+        type = types.path;
+        default = "${cfg.stateDir}/public/imgs-client/icons/fav.ico";
+      };
+
+      logo = mkOption {
+        type = types.path;
+        default = "${cfg.stateDir}/public/imgs-client/layout/logo.png";
+        description  = ''png file with size 75x75'';
       };
 
       webserver = {
