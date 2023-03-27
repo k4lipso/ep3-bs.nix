@@ -371,7 +371,7 @@ in
     users.users = mkIf (cfg.user == "ep3-bs") {
       ep3-bs = {
         description = "ep3-bs Service User";
-        home = cfg.stateDir;
+        #home = cfg.stateDir;
         group = "${cfg.group}";
         isNormalUser = true;
       };
