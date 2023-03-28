@@ -89,18 +89,32 @@ let
     chmod -R 0770 ${cfg.stateDir}
     mkdir ${cfg.stateDir}/vendor
     mkdir ${cfg.stateDir}/vendor/symfony
+    cp ${cfg.stateDir}/config/init.php.dist ${cfg.stateDir}/config/init.php
+    mv ${cfg.stateDir}/public/.htaccess_original ${cfg.stateDir}/public/.htaccess
+    rm ${cfg.stateDir}/config/init.php.dist
+    rm ${cfg.stateDir}/config/autoload/local.php.dist
+    rm ${cfg.stateDir}/data/cache/*
+
+    touch "${cfg.stateDir}/.is_initialized"
+  '';
+
+  update_ep3bs = pkgs.writeScriptBin "update_ep3bs" ''
+    #!${pkgs.stdenv.shell}
+
     cd ${cfg.stateDir}
     ${pkgs.php81Packages.composer}/bin/composer install --ignore-platform-reqs
     cp ${cfg.favicon} ${cfg.stateDir}/public/imgs-client/icons/fav.ico
     cp ${cfg.logo} ${cfg.stateDir}/public/imgs-client/layout/logo.png
-    cp ${cfg.stateDir}/config/init.php.dist ${cfg.stateDir}/config/init.php
     cp -f ${configFile} ${cfg.stateDir}/config/autoload/local.php
-    rm ${cfg.stateDir}/config/autoload/local.php.dist
-    mv ${cfg.stateDir}/public/.htaccess_original ${cfg.stateDir}/public/.htaccess
 
-    rm ${cfg.stateDir}/data/cache/*
-
-    touch "${cfg.stateDir}/.is_initialized"
+    if "${if cfg.in_production == true then "true" else "false"}"
+    then
+      rm ${cfg.stateDir}/public/setup.php
+      sed -i "s/define('EP3_BS_DEV_TAG', true);/define('EP3_BS_DEV_TAG', false);/g" ${cfg.stateDir}/config/init.php
+    else
+      cp ${ep3-bs-pkg}/public/setup.php ${cfg.stateDir}/public/setup.php
+      sed -i "s/define('EP3_BS_DEV_TAG', false);/define('EP3_BS_DEV_TAG', true);/g" ${cfg.stateDir}/config/init.php
+    fi
   '';
 in
 {
@@ -110,6 +124,16 @@ in
         default = false;
         type = types.bool;
         description = lib.mdDoc "Enable ep3-bs Service.";
+      };
+
+      in_production = mkOption {
+        default = false;
+        type = types.bool;
+        description = lib.mdDoc ''
+          If true it is assumed that database is setup correctly.
+          If true, database setup will not be available in frontend anymore.
+          Also debug and error logs are disabled in frontend.
+        '';
       };
 
       user = mkOption {
@@ -126,12 +150,12 @@ in
 
       favicon = mkOption {
         type = types.path;
-        default = "${cfg.stateDir}/public/imgs-client/icons/fav.ico";
+        default = "${ep3-bs-pkg}/public/imgs-client/icons/fav.ico";
       };
 
       logo = mkOption {
         type = types.path;
-        default = "${cfg.stateDir}/public/imgs-client/layout/logo.png";
+        default = "${ep3-bs-pkg}/public/imgs-client/layout/logo.png";
         description  = ''png file with size 75x75'';
       };
 
@@ -353,7 +377,7 @@ in
 
     systemd.services.ep3-bs-init = {
       description = "Initialize ep3-bs Data Directory";
-      after = [ "network.target" "httpd.target" ];
+      after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
       preStart = ''
@@ -380,11 +404,31 @@ in
       };
     };
 
+    systemd.services.ep3-bs-update = {
+      description = "Update ep3-bs Configuration";
+      after = [ "network.target" "ep3-bs-init.service" ];
+      wantedBy = [ "multi-user.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+        User = cfg.user;
+        Group = cfg.group;
+        PermissionsStartOnly = true;
+        PrivateNetwork = false;
+        PrivateDevices = false;
+        PrivateTmp = true;
+        ExecStart = "${update_ep3bs}/bin/update_ep3bs";
+      };
+
+      environment = {
+        USER = cfg.user;
+        HOME = cfg.stateDir;
+      };
+    };
 
     users.users = mkIf (cfg.user == "ep3-bs") {
       ep3-bs = {
         description = "ep3-bs Service User";
-        #home = cfg.stateDir;
         group = "${cfg.group}";
         isNormalUser = true;
       };
