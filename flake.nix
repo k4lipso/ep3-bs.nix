@@ -34,9 +34,9 @@
 
       };
 
-    nixosModules.ep3-bs = import ./ep3-bs.nix;
-
   }) // {
+
+    nixosModules.ep3-bs = import ./ep3-bs.nix;
 
     nixosConfigurations.test = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
