@@ -6,7 +6,6 @@ let
   cfg = config.services.ep3-bs;
   useSmtp = cfg.mail.type == "smtp" || cfg.mail.type == "smtp-tls";
 
-
   ep3-bs-pkg =
     with pkgs;
     stdenv.mkDerivation {
@@ -26,10 +25,6 @@ let
         runHook postInstall
       '';
 
-    };
-
-    nixosModules.ep3-bs = import ./ep3-bs.nix {
-      ep3-bs-pkg = self.packages.x86_64-linux.ep3-bs;
     };
 
   configFile = pkgs.writeText "local.php" ''
