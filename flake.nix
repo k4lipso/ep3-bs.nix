@@ -1,5 +1,5 @@
 {
-  description = "A very basic flake";
+  description = "providing ep3-bs as nixosModule";
 
   inputs.utils.url = "github:numtide/flake-utils";
 
