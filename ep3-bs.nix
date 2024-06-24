@@ -1,6 +1,7 @@
-{ config, lib, options, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
-with lib;
+  with lib;
+
 
 let
   cfg = config.services.ep3-bs;
@@ -40,7 +41,7 @@ let
         'db' => array(
             'database' => '${cfg.database.name}',
             'username' => '${cfg.database.user}',
-            'password' => '${cfg.database.password}',
+            'password' => '%%PASSWORD_DB%%',
     
             'hostname' => 'localhost',
             'port' => null,
@@ -52,7 +53,7 @@ let
     
             'host' => '${cfg.mail.host}', // for 'smtp' type only, otherwise remove or leave as is
             'user' => '${cfg.mail.user}', // for 'smtp' type only, otherwise remove or leave as is
-            'pw' => '${cfg.mail.password}', // for 'smtp' type only, otherwise remove or leave as is
+            'pw' => '%%PASSWORD_MAIL%%',  // for 'smtp' type only, otherwise remove or leave as is
     
             'port' => '${cfg.mail.port}', // for 'smtp' type only, otherwise remove or leave as is
             'auth' => '${cfg.mail.auth}', // for 'smtp' type only, change this to 'login' if you have problems with SMTP authentication
@@ -100,7 +101,12 @@ let
     ${pkgs.php81Packages.composer}/bin/composer install --ignore-platform-reqs
     cp ${cfg.favicon} ${cfg.stateDir}/public/imgs-client/icons/fav.ico
     cp ${cfg.logo} ${cfg.stateDir}/public/imgs-client/layout/logo.png
+
     cp -f ${configFile} ${cfg.stateDir}/config/autoload/local.php
+
+    sed -i s/%%PASSWORD_DB%%/$(cat ${cfg.database.passwordFile})/ ${cfg.stateDir}/config/autoload/local.php
+    sed -i s/%%PASSWORD_MAIL%%/$(cat ${cfg.mail.passwordFile})/ ${cfg.stateDir}/config/autoload/local.php
+
 
     if "${if cfg.in_production == true then "true" else "false"}"
     then
@@ -225,6 +231,16 @@ in
               default = "?";
             };
 
+            passwordFile = mkOption {
+              type = types.nullOr types.path;
+              default = null;
+              example = "/run/keys/mail-passwd";
+              description = lib.mdDoc ''
+                A file containing the password corresponding to
+                {option}`database.user`.
+              '';
+            };
+
             port = mkOption {
               type = types.str;
               default = "auto";
@@ -258,15 +274,15 @@ in
           description = lib.mdDoc "Database user.";
         };
 
-        password = mkOption {
-          type = types.str;
-          default = "";
-          description = lib.mdDoc ''
-            The password corresponding to {option}`database.user`.
-            Warning: this is stored in cleartext in the Nix store!
-            Use {option}`database.passwordFile` instead.
-          '';
-        };
+        #password = mkOption {
+        #  type = types.str;
+        #  default = "";
+        #  description = lib.mdDoc ''
+        #    The password corresponding to {option}`database.user`.
+        #    Warning: this is stored in cleartext in the Nix store!
+        #    Use {option}`database.passwordFile` instead.
+        #  '';
+        #};
 
         passwordFile = mkOption {
           type = types.nullOr types.path;
@@ -356,9 +372,9 @@ in
       package = mkDefault pkgs.mariadb;
 
       initialScript = pkgs.writeText "mysqlInitScript" ''
-        CREATE USER '${cfg.database.user}'@localhost IDENTIFIED BY '${cfg.database.password}';
+        CREATE USER '${cfg.database.user}'@localhost IDENTIFIED BY 'PW FOO';
         CREATE DATABASE ${cfg.database.name};
-        GRANT ALL PRIVILEGES ON *.* TO '${cfg.database.user}'@localhost IDENTIFIED BY '${cfg.database.password}';
+        GRANT ALL PRIVILEGES ON *.* TO '${cfg.database.user}'@localhost IDENTIFIED BY 'PW FOO';
         FLUSH PRIVILEGES;
       '';
 

@@ -23,14 +23,15 @@
           services.ep3-bs.enable = true;
           services.ep3-bs.mail.address = "test@test.de";
           services.ep3-bs.database.user = "testuser3";
-          services.ep3-bs.database.password = "testPassword1234";
+          services.ep3-bs.database.passwordFile = "/var/lib/db.txt";
+          services.ep3-bs.mail.passwordFile = "/var/lib/mail.txt";
           users.users.test = {
             isNormalUser = true;
             extraGroups = [ "wheel" ];
             initialPassword = "test";
           };
 
-          virtualisation.vmVariant.virtualisation.graphics = true;
+          virtualisation.vmVariant.virtualisation.graphics = false;
         }
       ];
     };
